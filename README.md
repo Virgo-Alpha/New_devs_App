@@ -2,7 +2,7 @@
 
 ## Loom Walkthrough
 
-I will add the link to my Loom walkthrough here after recording it.
+Video walkthrough: https://www.loom.com/share/6fbba5b9e24044c58eaa2fead21dc341
 
 ## SetUp
 
