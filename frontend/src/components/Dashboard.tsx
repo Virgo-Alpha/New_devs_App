@@ -1,16 +1,46 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { RevenueSummary } from "./RevenueSummary";
+import { SecureAPI } from "../lib/secureApi";
 
-const PROPERTIES = [
-  { id: 'prop-001', name: 'Beach House Alpha' },
-  { id: 'prop-002', name: 'City Apartment Downtown' },
-  { id: 'prop-003', name: 'Country Villa Estate' },
-  { id: 'prop-004', name: 'Lakeside Cottage' },
-  { id: 'prop-005', name: 'Urban Loft Modern' }
-];
+interface Property {
+  id: string;
+  name: string;
+  timezone: string;
+}
 
 const Dashboard: React.FC = () => {
-  const [selectedProperty, setSelectedProperty] = useState('prop-001');
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState("2024-03");
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [propertiesError, setPropertiesError] = useState("");
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setPropertiesLoading(true);
+      setPropertiesError("");
+
+      try {
+        const response = await SecureAPI.getDashboardProperties();
+        setProperties(response);
+        setSelectedProperty((current) => {
+          if (response.some((property: Property) => property.id === current)) {
+            return current;
+          }
+          return response[0]?.id || "";
+        });
+      } catch (error) {
+        console.error(error);
+        setPropertiesError("Failed to load properties");
+      } finally {
+        setPropertiesLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
+
+  const [year, month] = selectedPeriod.split("-").map(Number);
 
   return (
     <div className="p-4 lg:p-6 min-h-full">
@@ -26,28 +56,58 @@ const Dashboard: React.FC = () => {
                   Monthly performance insights for your properties
                 </p>
               </div>
-              
-              {/* Property Selector */}
-              <div className="flex flex-col sm:items-end">
-                <label className="text-xs font-medium text-gray-700 mb-1">Select Property</label>
-                <select
-                  value={selectedProperty}
-                  onChange={(e) => setSelectedProperty(e.target.value)}
-                  className="block w-full sm:w-auto min-w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                >
-                  {PROPERTIES.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.name}
-                    </option>
-                  ))}
-                </select>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-700 mb-1">Reporting Month</label>
+                  <input
+                    type="month"
+                    value={selectedPeriod}
+                    onChange={(event) => setSelectedPeriod(event.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="text-xs font-medium text-gray-700 mb-1">Select Property</label>
+                  <select
+                    value={selectedProperty}
+                    onChange={(event) => setSelectedProperty(event.target.value)}
+                    disabled={propertiesLoading || properties.length === 0}
+                    className="block w-full min-w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100"
+                  >
+                    {properties.map((property) => (
+                      <option key={property.id} value={property.id}>
+                        {property.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <RevenueSummary propertyId={selectedProperty} />
-          </div>
+          {propertiesError && (
+            <div className="p-4 text-red-500 bg-red-50 rounded-lg">
+              {propertiesError}
+            </div>
+          )}
+
+          {!propertiesError && !propertiesLoading && properties.length === 0 && (
+            <div className="p-4 text-gray-500 bg-gray-50 rounded-lg">
+              No properties are available for this account.
+            </div>
+          )}
+
+          {selectedProperty && selectedPeriod && (
+            <div className="space-y-6">
+              <RevenueSummary
+                propertyId={selectedProperty}
+                year={year}
+                month={month}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

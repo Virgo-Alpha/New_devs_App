@@ -15,6 +15,7 @@ import os
 import time
 
 from app.core.redis_client import redis_client
+from app.core.database_pool import db_pool
 from .api.v1 import (
     users_lightning,
     cities,
@@ -90,6 +91,11 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting up...")
 
+    # Initialize the PostgreSQL pool used by revenue reporting.
+    await db_pool.initialize()
+    if not db_pool.session_factory:
+        logger.warning("Revenue database is unavailable")
+
     # Initialize Supabase connection pool
     try:
         from .core.supabase_connection_pool import supabase_pool
@@ -126,6 +132,9 @@ async def lifespan(app: FastAPI):
     # Shutdown async processor
     await async_processor.shutdown()
     logger.info("Async processor shutdown completed")
+
+    await db_pool.close()
+    logger.info("Revenue database connection pool closed")
 
     # Close connection pool
     try:
